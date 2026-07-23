@@ -14,12 +14,12 @@ log = logging.getLogger("auto_shine_cube")
 class OptionRow:
     index: int
     name: str  # 潛能名稱，例如「魔法攻擊力」
-    value: object  # 百分比數值(int)，讀不到時為 None
+    value: object  # 數值字串，例如"12%"(百分比)或"300"(固定數值)，讀不到時為 None
     click_point_abs: tuple  # client 座標 (x, y)，目前流程用不到點擊，保留供除錯/未來使用
 
     @property
     def display(self) -> str:
-        return f"{self.name} +{self.value}%" if self.value is not None else self.name
+        return f"{self.name} +{self.value}" if self.value is not None else self.name
 
 
 class AbortError(RuntimeError):

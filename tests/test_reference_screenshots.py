@@ -39,9 +39,9 @@ FIXTURE_REGIONS = Regions({
 })
 
 EXPECTED = [
-    ("MaxMP", 11),
-    ("HP恢復道具及恢復技能效率", 30),
-    ("MaxMP", 300),
+    ("MaxMP", "11%"),
+    ("HP恢復道具及恢復技能效率", "30%"),
+    ("MaxMP", "300"),  # 固定數值(無%)，跟另一列同名但帶%的"11%"不能視為相同數值
 ]
 
 
@@ -93,12 +93,17 @@ def test_goal_met_when_all_targets_present_name_only(result_rows):
 
 
 def test_goal_met_requires_exact_value_when_specified(result_rows):
-    # MaxMP 在畫面中出現兩次(+11% 和 +300%)，指定其中一個明確數值時應各自符合。
+    # MaxMP 在畫面中出現兩次：+11%(百分比) 和 +300(固定數值)，指定其中一個
+    # 明確數值(含是否帶%)時應各自符合。
     ctrl_11 = _make_controller(["MaxMP +11%", "", ""])
     assert ctrl_11.is_goal_met(result_rows) is True
 
-    ctrl_300 = _make_controller(["MaxMP +300%", "", ""])
+    ctrl_300 = _make_controller(["MaxMP +300", "", ""])
     assert ctrl_300.is_goal_met(result_rows) is True
+
+    # 數字相同但有無%不同，不能視為符合(300是固定數值，不是300%)
+    ctrl_percent_mismatch = _make_controller(["MaxMP +300%", "", ""])
+    assert ctrl_percent_mismatch.is_goal_met(result_rows) is False
 
     # 指定一個畫面上不存在的數值則不算達成
     ctrl_fail = _make_controller(["MaxMP +50%", "", ""])
@@ -136,9 +141,9 @@ def test_goal_met_independent_of_target_order_within_combo():
     # 「魔法攻擊力」配"魔法攻擊力 +12%"就能兩個都符合。這裡驗證同一組目標
     # 不論寫的順序為何，結果都應該一致(True)。
     rows = [
-        OptionRow(0, "魔法攻擊力", 12, (0, 0)),
-        OptionRow(1, "物理攻擊力", 9, (0, 0)),
-        OptionRow(2, "STR", 9, (0, 0)),
+        OptionRow(0, "魔法攻擊力", "12%", (0, 0)),
+        OptionRow(1, "物理攻擊力", "9%", (0, 0)),
+        OptionRow(2, "STR", "9%", (0, 0)),
     ]
     order_a = _make_controller(["攻擊力", "魔法攻擊力 +12%", ""])
     order_b = _make_controller(["魔法攻擊力 +12%", "攻擊力", ""])

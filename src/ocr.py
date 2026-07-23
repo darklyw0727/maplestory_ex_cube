@@ -6,7 +6,7 @@ from paddleocr import PaddleOCR
 from PIL import Image
 import logging
 
-_TRAILING_NUMBER_RE = re.compile(r"([+＋\-－]?\s*\d+)\s*%?\s*\.?\s*$")
+_TRAILING_NUMBER_RE = re.compile(r"([+＋\-－]?\s*\d+)\s*(%)?\s*\.?\s*$")
 
 _engine: PaddleOCR = None
 
@@ -58,14 +58,21 @@ def extract_name(raw_text: str) -> str:
 
 
 def split_name_value(raw_text: str):
-    """將文字拆成 (名稱, 數值or None)。數值只保留數字本身(去除正負號)。"""
+    """將文字拆成 (名稱, 數值or None)。
+
+    數值保留原本是否帶"%"的資訊(回傳字串如"13%"或"300")，因為同一個數字
+    有無百分比代表不同的潛能(例如"MaxMP +300"是固定數值、"無視怪物防禦率
+    +30%"是百分比)，兩者不能視為相同數值。
+    """
     text = raw_text.strip()
     m = _TRAILING_NUMBER_RE.search(text)
     if not m:
         return text, None
     name = text[: m.start()].strip()
     digits = re.sub(r"\D", "", m.group(1))
-    value = int(digits) if digits else None
+    if not digits:
+        return name, None
+    value = digits + "%" if m.group(2) else digits
     return name, value
 
 
@@ -86,9 +93,9 @@ def match_score(candidate: str, target: str) -> float:
 def potential_matches(candidate_name: str, candidate_value, target_text: str, threshold: float) -> bool:
     """比對「潛能選項(名稱+數值)」與 config 設定的「目標潛能文字」。
 
-    若目標文字有指定數值(例如"魔法攻擊力 +12%")，數值必須完全相同才算符合，
-    名稱部分則用模糊比對容忍OCR誤差；若目標文字沒有指定數值(只寫"魔法攻擊力")，
-    則只比對名稱、忽略數值，維持彈性。
+    若目標文字有指定數值(例如"魔法攻擊力 +12%")，數值(含是否帶"%")必須完全
+    相同才算符合，名稱部分則用模糊比對容忍OCR誤差；若目標文字沒有指定數值
+    (只寫"魔法攻擊力")，則只比對名稱、忽略數值，維持彈性。
     """
     t_name, t_value = split_name_value(target_text)
     if match_score(candidate_name, t_name) < threshold:
