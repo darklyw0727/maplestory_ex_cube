@@ -1,0 +1,63 @@
+{
+  "// 使用說明": "target_potentials 是「多組允許的目標組合」的list，每組固定3個字串(允許空字串，代表除其他目標潛能外的任意潛能)，list中排越前面優先權越高；只要每次重新設定後畫面上的3個潛能滿足其中任一組合就算達成目標、程式自動結束。可只寫名稱(如\"魔法攻擊力\")代表不限數值，也可連數值一起寫(如\"魔法攻擊力 +12%\")代表數值也要完全符合才算目標達成。log_lv設為\"debug\"會印出每次點擊的詳細座標，其餘(含預設)只印重點流程訊息。max_cubes 為0代表不限制使用數量，每按一次「重新設定」算用掉1個方塊。regions 內為所有按鈕/讀取區域的座標，單位是 ref_width x ref_height 這個參考解析度下的像素；若遊戲視窗UI位置跟預設值對不上，可執行 python tools/locate.py 依提示逐項重新校正，不需要改程式碼。ocr_lang 是 PaddleOCR 的語言模型，預設 chinese_cht(繁體中文)。",
+  "target_potentials": [
+    [
+      "",
+      "INT +11%",
+      ""
+    ],
+    [
+      "",
+      "STR +13%",
+      ""
+    ],
+    [
+      "",
+      "DEX +13%",
+      ""
+    ]
+  ],
+  "log_lv": "debug",
+  "max_cubes": 0,
+  "window_title": "貓貓TMS",
+  "ocr_lang": "chinese_cht",
+  "ocr_match_threshold": 0.55,
+  "click_delay_sec": 0.35,
+  "post_action_wait_sec": 0.6,
+  "dry_run": false,
+  "regions": {
+    "ref_width": 1366,
+    "ref_height": 768,
+    "currency_label_box": [
+      1059,
+      482,
+      1146,
+      497
+    ],
+    "currency_expected_texts": [
+      "珍貴附加方塊",
+      "絕對附加方塊"
+    ],
+    "reset_button": [
+      1118,
+      707
+    ],
+    "reset_confirm_button": [
+      649,
+      456
+    ],
+    "result_list_box": [
+      990,
+      332,
+      1189,
+      402
+    ],
+    "result_row_y_bounds": [
+      336,
+      355,
+      378,
+      399
+    ],
+    "result_text_x_offset": 28
+  }
+}

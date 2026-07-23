@@ -1,0 +1,119 @@
+# 自動洗珍貴/絕對附加方塊
+
+依 [plan.md](plan.md) 實作，讀取遊戲畫面(視窗標題預設「貓貓TMS」)並自動操作滑鼠，
+重複點擊「重新設定」使用珍貴附加方塊或絕對附加方塊，直到附加潛在能力符合設定的
+目標，或用完設定的方塊上限為止。
+
+## 安裝
+
+滑鼠控制用 [pyautogui](https://pyautogui.readthedocs.io/)，畫面文字辨識用
+[PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)。PaddleOCR 底層的
+`paddlepaddle` 目前還沒有 Python 3.14 的預編譯版本，**必須用 Python 3.13 (或更早)**：
+
+```
+py -3.13 -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+```
+
+第一次執行時 PaddleOCR 會自動下載偵測/辨識模型(存到 `~/.paddlex/official_models/`)，
+需要網路連線，之後就會用本機快取，不用再下載。
+
+## 設定 (config.json)
+
+```json
+{
+  "target_potentials": [
+    ["魔法攻擊力", "", ""],
+    ["物理攻擊力", "", ""]
+  ],
+  "log_lv": "info",
+  "max_cubes": 0,
+  "window_title": "貓貓TMS",
+  "ocr_lang": "chinese_cht",
+  "ocr_match_threshold": 0.55,
+  "click_delay_sec": 0.35,
+  "post_action_wait_sec": 0.6,
+  "dry_run": false,
+  "regions": { "...": "所有按鈕/讀取區域座標，見下方「座標校正」" }
+}
+```
+
+流程很單純：每按一次「重新設定」就會消耗1個方塊、立即套用新的3條附加潛在能力，
+沒有「6選3」之類的中間選擇步驟，也不需要另外按「使用」或「離開」——判斷達成
+目標後程式直接結束即可(此時畫面上已經是套用好的結果)。
+
+- `target_potentials`：**多組允許的目標組合**組成的list，每組固定3個字串槽位
+  (空字串代表「除了其他目標潛能外的任意潛能」)，**list中排越前面的組合優先權
+  越高**。每次按下「重新設定」後畫面上的3個潛能，只要滿足**其中任一組合**就算
+  達成目標、程式自動結束；不滿足則繼續下一次重新設定，直到達成目標或用完
+  `max_cubes`。上面範例代表優先追求「魔法攻擊力」，只要這3個潛能裡沒有魔法攻擊力
+  才會去比對「物理攻擊力」那組。
+  - 每個字串可只寫名稱，例如 `"魔法攻擊力"`：只比對名稱，不限數值。
+  - 也可以連數值一起寫，例如 `"魔法攻擊力 +12%"`：數值必須完全相同才算符合，用來
+    區分同名但不同數值的重複選項(例如"無視怪物防禦率"同時出現 +30% 和 +40% 兩種)。
+- `log_lv`：`"debug"` 會印出每次點擊的詳細座標，其餘(含預設)只印重點流程訊息。
+- `max_cubes`：最多使用幾個方塊，`0` 代表不限制。
+- `dry_run`：`true` 時只讀取畫面、印出判斷結果，不會真的點擊滑鼠(用來乾跑測試座標/OCR)。
+
+## 座標校正 (regions)
+
+所有滑鼠點擊/畫面讀取用的座標都放在 `config.json` 的 `regions` 區塊，不用改程式碼。
+座標是以 `ref_width` x `ref_height`(預設 1360x793，對應 plan.md 附圖的視窗大小)這個
+「參考解析度」下的像素記錄，執行時會依實際視窗大小等比例換算，因此視窗大小只要沒
+差異太大都還算容錯。各欄位意義：
+
+| 欄位 | 說明 |
+| --- | --- |
+| `currency_label_box` / `currency_expected_texts` | 讀取「使用貨幣」欄位文字的區域，與可接受的兩種方塊名稱(珍貴附加方塊/絕對附加方塊) |
+| `reset_button` / `reset_confirm_button` | 「重新設定」按鈕與其確認彈窗的「確認」按鈕(按下後立即套用新的潛在能力) |
+| `result_list_box` / `result_row_y_bounds` | 重新設定後直接顯示的3個潛能清單方框，與其中4條分隔線(切出3列) |
+| `result_text_x_offset` | 每列文字起始位置，相對於整列左緣的x偏移(用來跳過tier圖示) |
+
+若遊戲改版、UI位置跟預設值對不上、或想確認目前設定是否準確，可執行座標校正工具：
+
+```
+.venv\Scripts\python tools/locate.py
+```
+
+程式會依 `currency_label_box` → `reset_button` → `reset_confirm_button` →
+`result_list_box` → `result_row_y_bounds` → `result_text_x_offset` 的順序，
+逐項提示你「遊戲畫面該停在哪一步、滑鼠要移到哪裡」；移到定點後直接按 Enter
+就會記錄並立刻寫回 `config.json`，自動進入下一項，不用自己輸入名稱。也支援
+輸入 `s` 跳過該項(保留原值)、`q` 結束校正(已記錄的項目不會遺失)。
+
+## 執行
+
+1. 先手動在遊戲中開啟潛在能力面板、切到「方塊」分頁並選擇「珍貴附加方塊」或
+   「絕對附加方塊」(對應 plan.md 步驟1)。
+2. 執行：
+
+```
+.venv\Scripts\python run.py
+```
+
+3. 依提示輸入 `y` 開始，程式會倒數3秒後開始自動操作。
+4. **緊急停止**：執行期間把滑鼠移到螢幕**任一角落**即會觸發 pyautogui 的 fail-safe
+   中止(`pyautogui.FAILSAFE`)；也可以直接 Ctrl+C。
+5. 點擊完不會把滑鼠移回原位，游標會停在最後一次點擊的位置。
+
+執行紀錄會寫在 `logs/run_*.log`。
+
+## 測試（不需要開遊戲）
+
+`tests/test_reference_screenshots.py` 用從 plan.md 附的 `step4.png` 裁出的
+`tests/fixtures/reset_result_three.png`(重新設定後3個潛能清單的紅框範圍)驗證
+OCR 辨識、目標比對邏輯是否正確：
+
+```
+.venv\Scripts\python -m pytest tests/ -v
+```
+
+## 已知限制
+
+- 所有座標是用參考截圖(約 1360x793 視窗大小)校準、以比例換算，若遊戲視窗大小差異
+  太大可能會點不準，建議維持接近該大小的視窗，或用 `tools/locate.py` 重新校正。
+- PaddleOCR 對繁體字偶爾會辨識成筆劃相近的簡體/日文變體字(例如「擊」讀成「撃」、
+  「視」讀成「视」)，但比對邏輯本來就用模糊比對容忍1~2個字差異，不影響判斷。
+- 已在真實遊戲視窗上實際測試調整過座標與流程；若換了新的視窗大小/位置或遊戲改版
+  導致點不準，先用 `tools/locate.py` 重新校正，仍有問題建議先開 `dry_run: true`
+  觀察 log 判斷是哪個步驟不對。

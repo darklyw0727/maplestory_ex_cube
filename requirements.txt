@@ -1,0 +1,8 @@
+pillow
+numpy
+pyautogui
+pywin32
+mss
+paddlepaddle
+paddleocr
+pytest
