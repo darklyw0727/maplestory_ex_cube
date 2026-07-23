@@ -58,11 +58,11 @@ class Controller:
         raw = ocr.read_row_text(crop)
         return ocr.extract_name(raw)
 
-    def _read_option_rows(self, y_bounds_ref, box_frac) -> list:
+    def _read_option_rows(self, y_bounds_ref, box_frac, text_x_offset_frac) -> list:
         img = self.win.screenshot()
         w, h = img.size
         x0, y0, x1, y1 = regions.scale_box(box_frac, w, h)
-        text_x0 = x0 + regions.scale_x(self.cfg.regions.result_text_x_offset, w)
+        text_x0 = x0 + regions.scale_x(text_x_offset_frac, w)
 
         rows = []
         for i in range(len(y_bounds_ref) - 1):
@@ -76,42 +76,36 @@ class Controller:
             rows.append(OptionRow(index=i, name=name, value=value, click_point_abs=(cx, cy)))
         return rows
 
-    # ---------- 流程各步驟 ----------
+    # ---------- 判斷流程種類 ----------
 
-    def verify_cube_selected(self):
-        # 完全辨識不到文字(代表面板可能根本沒開/擷取錯位置)才視為致命錯誤，
-        # 辨識到但相似度偏低則只警告、不中止流程，留給使用者自行判斷。
+    def detect_flow(self) -> str:
+        """讀取「使用貨幣」欄位，判斷這次要走哪種流程。
+
+        回傳 "simple"(珍貴附加方塊/絕對附加方塊) 或 "restore"(恢復附加方塊)。
+        完全辨識不到文字(代表面板可能根本沒開/擷取錯位置)才視為致命錯誤，
+        辨識到但相似度偏低則只警告、不中止流程，留給使用者自行判斷。
+        """
         label = self._read_currency_label()
-        expected_texts = self.cfg.regions.currency_expected_texts
-        best_text, best_score = max(
-            ((t, ocr.match_score(label, t)) for t in expected_texts),
-            key=lambda pair: pair[1],
+        candidates = [("simple", t) for t in self.cfg.regions.currency_expected_texts]
+        candidates += [("restore", t) for t in self.cfg.regions.restore_currency_expected_texts]
+        flow, best_text, best_score = max(
+            ((flow, t, ocr.match_score(label, t)) for flow, t in candidates),
+            key=lambda triple: triple[2],
         )
         if best_score < 0.15:
             raise AbortError(
                 f"讀不到使用貨幣欄位內容(讀到「{label}」)，"
-                f"請確認已開啟潛在能力面板並選擇「珍貴附加方塊」或「絕對附加方塊」。"
+                f"請確認已開啟潛在能力面板並選擇「珍貴附加方塊」「絕對附加方塊」或「恢復附加方塊」。"
             )
         if best_score < 0.4:
             log.warning(
                 "使用貨幣欄位讀到「%s」，與「%s」相似度僅%.2f，"
-                "若目前面板選的不是珍貴/絕對附加方塊請自行中止程式(Ctrl+C)",
+                "若目前面板選的方塊不對請自行中止程式(Ctrl+C)",
                 label, best_text, best_score,
             )
         else:
             log.info("已確認目前使用貨幣為「%s」 (相似度%.2f)", best_text, best_score)
-
-    def click_reset(self):
-        log.debug("點擊「重新設定」")
-        self._click(self.cfg.regions.reset_button)
-        self._wait(self.cfg.post_action_wait_sec)
-        log.debug("點擊重新設定確認彈窗「確認」")
-        self._click(self.cfg.regions.reset_confirm_button)
-        self._wait(self.cfg.post_action_wait_sec)
-
-    def read_potentials(self):
-        """重新設定會立即套用結果，直接顯示3個潛能(無需另外選取/鎖定)。"""
-        return self._read_option_rows(self.cfg.regions.result_row_y_bounds, self.cfg.regions.result_list_box)
+        return flow
 
     def is_goal_met(self, rows) -> bool:
         """rows 只要滿足 target_potentials 任一組合，就算達成目標。
@@ -136,14 +130,25 @@ class Controller:
                 return True
         return False
 
-    # ---------- 主流程 ----------
+    # ---------- 流程1: 珍貴附加方塊 / 絕對附加方塊 ----------
 
-    def run(self):
-        self.win.find()
-        self.win.ensure_foreground()
+    def click_reset(self):
+        log.debug("點擊「重新設定」")
+        self._click(self.cfg.regions.reset_button)
+        self._wait(self.cfg.post_action_wait_sec)
+        log.debug("點擊重新設定確認彈窗「確認」")
+        self._click(self.cfg.regions.reset_confirm_button)
+        self._wait(self.cfg.post_action_wait_sec)
 
-        self.verify_cube_selected()
+    def read_potentials(self):
+        """重新設定會立即套用結果，直接顯示3個潛能(無需另外選取/鎖定)。"""
+        return self._read_option_rows(
+            self.cfg.regions.result_row_y_bounds,
+            self.cfg.regions.result_list_box,
+            self.cfg.regions.result_text_x_offset,
+        )
 
+    def _run_simple_flow(self):
         while True:
             if self.cfg.max_cubes and self.used_cubes >= self.cfg.max_cubes:
                 log.info("已達方塊使用上限(%d)，結束", self.cfg.max_cubes)
@@ -158,3 +163,64 @@ class Controller:
             if self.is_goal_met(rows):
                 log.info("已達成目標潛能，共使用 %d 個方塊，結束程式", self.used_cubes)
                 return "success"
+
+    # ---------- 流程2: 恢復附加方塊 ----------
+
+    def read_restore_after_potentials(self):
+        """BEFORE/AFTER比較畫面中，讀取右邊AFTER潛能組的3個潛能。"""
+        return self._read_option_rows(
+            self.cfg.regions.restore_result_row_y_bounds,
+            self.cfg.regions.restore_result_list_box,
+            self.cfg.regions.restore_result_text_x_offset,
+        )
+
+    def click_restore_reroll(self):
+        log.debug("點擊「重新設定1次」")
+        self._click(self.cfg.regions.restore_reroll_button)
+        self._wait(self.cfg.post_action_wait_sec)
+        log.debug("點擊「重新設定1次」確認彈窗「確認」(第1個)")
+        self._click(self.cfg.regions.restore_reroll_confirm_button)
+        self._click(self.cfg.regions.restore_reroll_confirm_button)
+        self._wait(self.cfg.post_action_wait_sec)
+        log.debug("點擊「重新設定1次」確認彈窗「確認」(第2個)")
+        self._click(self.cfg.regions.restore_reroll_confirm_button_2)
+        self._wait(self.cfg.post_action_wait_sec)
+
+    def click_select_after(self):
+        log.debug("點選右邊AFTER潛能組")
+        self._click(self.cfg.regions.restore_select_after_point)
+
+    def _run_restore_flow(self):
+        # 第一次「重新設定」用來進入 BEFORE/AFTER 比較畫面
+        self.click_reset()
+        self.used_cubes += 1
+
+        while True:
+            rows = self.read_restore_after_potentials()
+            log.info("第%d次重設後AFTER的潛能: %s", self.used_cubes, [r.display for r in rows])
+
+            if self.is_goal_met(rows):
+                log.info("已達成目標潛能，點選AFTER套用，共使用 %d 個方塊，結束程式", self.used_cubes)
+                self.click_select_after()
+                return "success"
+
+            if self.cfg.max_cubes and self.used_cubes >= self.cfg.max_cubes:
+                log.info("已達方塊使用上限(%d)，結束(維持BEFORE，不套用AFTER)", self.cfg.max_cubes)
+                return "limit_reached"
+
+            self.click_restore_reroll()
+            self.used_cubes += 1
+
+    # ---------- 主流程 ----------
+
+    def run(self):
+        self.win.find()
+        self.win.ensure_foreground()
+
+        flow = self.detect_flow()
+        if flow == "restore":
+            log.info("偵測到「恢復附加方塊」，走恢復流程(BEFORE/AFTER比較)")
+            return self._run_restore_flow()
+
+        log.info("偵測到「珍貴附加方塊」或「絕對附加方塊」，走一般流程")
+        return self._run_simple_flow()

@@ -1,13 +1,20 @@
 """
-用從 plan.md 附帶的 step4.png 裁出的 tests/fixtures/reset_result_three.png
-(重新設定後直接顯示的3個潛能清單，即 plan.md 圖中的紅框範圍)，驗證OCR辨識、
-潛能比對(is_goal_met)邏輯是否正確。不需要開啟遊戲即可執行:
+用從 plan.md 附帶的截圖裁出的 tests/fixtures/*.png，驗證OCR辨識、流程判斷
+(detect_flow)、潛能比對(is_goal_met)邏輯是否正確。不需要開啟遊戲即可執行:
 
     python -m pytest tests/ -v
 
-註：plan.md 附的 step*.png 是完整桌面截圖(用來標示操作步驟給人看)，並非遊戲
-client area 的原始像素，所以不能直接套用 config.json 的 regions 比例換算；
-這裡改用單獨裁切好、以圖片自身尺寸為準的小型 fixture 座標。
+註：plan.md 附的 step*.png / stepa*.png 是完整桌面截圖(用來標示操作步驟給人
+看)，並非遊戲 client area 的原始像素，所以不能直接套用 config.json 的
+regions 比例換算；這裡改用單獨裁切好、以圖片自身尺寸為準的小型 fixture 座標。
+
+fixtures:
+- reset_result_three.png (from step4.png)：珍貴/絕對附加方塊流程，重新設定後
+  直接顯示的3個潛能清單。
+- restore_after_three.png (from stepa4.png)：恢復附加方塊流程，BEFORE/AFTER
+  比較畫面中右邊AFTER的3個潛能清單。
+- currency_simple.png (from step1.png) / currency_restore.png (from
+  stepa1.png)：兩種流程「使用貨幣」欄位的文字截圖，用來測試 detect_flow。
 """
 from pathlib import Path
 
@@ -21,6 +28,9 @@ from src.regions import Regions
 
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURE = ROOT / "tests" / "fixtures" / "reset_result_three.png"
+RESTORE_FIXTURE = ROOT / "tests" / "fixtures" / "restore_after_three.png"
+CURRENCY_SIMPLE_FIXTURE = ROOT / "tests" / "fixtures" / "currency_simple.png"
+CURRENCY_RESTORE_FIXTURE = ROOT / "tests" / "fixtures" / "currency_restore.png"
 
 try:
     ocr.configure("chinese_cht")
@@ -44,8 +54,29 @@ EXPECTED = [
     ("MaxMP", "300"),  # 固定數值(無%)，跟另一列同名但帶%的"11%"不能視為相同數值
 ]
 
+# 恢復附加方塊流程的AFTER潛能清單 fixture(193x78)，用法同上。
+RESTORE_FIXTURE_REGIONS = Regions({
+    "ref_width": 193,
+    "ref_height": 78,
+    "restore_result_list_box": [0, 0, 193, 78],
+    "restore_result_row_y_bounds": [0, 26, 52, 78],
+    "restore_result_text_x_offset": 18,
+})
 
-def _make_controller(target_potentials):
+EXPECTED_RESTORE = [
+    ("道具掉落率", "5%"),
+    ("INT", "18"),
+    ("MaxMP", "8%"),
+]
+
+# 兩種流程「使用貨幣」欄位文字截圖(currency_simple/currency_restore)用的
+# fixture regions，currency_label_box涵蓋整張圖；ref_width/height用圖片自身
+# 尺寸即可，detect_flow只在意文字內容，不會用到其他座標欄位。
+CURRENCY_SIMPLE_REGIONS = Regions({"ref_width": 226, "ref_height": 40, "currency_label_box": [0, 0, 226, 40]})
+CURRENCY_RESTORE_REGIONS = Regions({"ref_width": 230, "ref_height": 41, "currency_label_box": [0, 0, 230, 41]})
+
+
+def _make_controller(target_potentials, regions=FIXTURE_REGIONS):
     """target_potentials: 多組允許組合的list，每組3個字串，例如
     [["無視怪物防禦率", "", ""]]；為了方便測試呼叫，傳入單一組合(flat list)
     時會自動包成只有一組的巢狀list。"""
@@ -61,7 +92,7 @@ def _make_controller(target_potentials):
         click_delay_sec=0,
         post_action_wait_sec=0,
         dry_run=True,
-        regions=FIXTURE_REGIONS,
+        regions=regions,
     )
     ctrl = Controller.__new__(Controller)
     ctrl.cfg = cfg
@@ -85,6 +116,57 @@ def test_reads_three_potentials(result_rows):
         score = ocr.match_score(row.name, name)
         assert score >= 0.55, f"row{row.index} name={row.name!r} expected~={name!r} score={score:.2f}"
         assert row.value == value, f"row{row.index} value={row.value!r} expected={value}"
+
+
+@pytest.fixture(scope="module")
+def restore_after_rows():
+    ctrl = _make_controller(["", "", ""], regions=RESTORE_FIXTURE_REGIONS)
+
+    class FakeWindow:
+        def screenshot(self_inner):
+            return Image.open(RESTORE_FIXTURE)
+
+    ctrl.win = FakeWindow()
+    return ctrl.read_restore_after_potentials()
+
+
+def test_reads_restore_after_three_potentials(restore_after_rows):
+    for row, (name, value) in zip(restore_after_rows, EXPECTED_RESTORE):
+        score = ocr.match_score(row.name, name)
+        assert score >= 0.55, f"row{row.index} name={row.name!r} expected~={name!r} score={score:.2f}"
+        assert row.value == value, f"row{row.index} value={row.value!r} expected={value}"
+
+
+def test_restore_goal_met_if_any_combo_matches(restore_after_rows):
+    ctrl = _make_controller([
+        ["物理攻擊力", "", ""],  # 對不上
+        ["INT +18", "", ""],  # 對得上
+    ], regions=RESTORE_FIXTURE_REGIONS)
+    assert ctrl.is_goal_met(restore_after_rows) is True
+
+
+def test_restore_goal_not_met_when_no_combo_matches(restore_after_rows):
+    ctrl = _make_controller(["物理攻擊力", "", ""], regions=RESTORE_FIXTURE_REGIONS)
+    assert ctrl.is_goal_met(restore_after_rows) is False
+
+
+def _detect_flow_with_fixture(fixture_path, regions):
+    ctrl = _make_controller(["", "", ""], regions=regions)
+
+    class FakeWindow:
+        def screenshot(self_inner):
+            return Image.open(fixture_path)
+
+    ctrl.win = FakeWindow()
+    return ctrl.detect_flow()
+
+
+def test_detect_flow_simple():
+    assert _detect_flow_with_fixture(CURRENCY_SIMPLE_FIXTURE, CURRENCY_SIMPLE_REGIONS) == "simple"
+
+
+def test_detect_flow_restore():
+    assert _detect_flow_with_fixture(CURRENCY_RESTORE_FIXTURE, CURRENCY_RESTORE_REGIONS) == "restore"
 
 
 def test_goal_met_when_all_targets_present_name_only(result_rows):

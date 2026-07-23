@@ -3,11 +3,21 @@
 不需要自己輸入名稱，每記錄一項就立刻寫回 config.json 的 regions 區塊。
 
 用法:
-    python tools/locate.py [--config config.json]
+    python tools/locate.py [--config config.json] [--mode default|restore]
+
+    --mode default(預設): 校正「珍貴附加方塊」/「絕對附加方塊」流程用的座標，
+        依 currency_label_box -> reset_button -> reset_confirm_button ->
+        result_list_box -> result_row_y_bounds -> result_text_x_offset 的順序。
+    --mode restore: 校正「恢復附加方塊」流程(BEFORE/AFTER比較畫面)用的座標，
+        依 currency_label_box -> reset_button -> reset_confirm_button ->
+        restore_result_list_box -> restore_result_row_y_bounds ->
+        restore_result_text_x_offset -> restore_select_after_point ->
+        restore_reroll_button -> restore_reroll_confirm_button ->
+        restore_reroll_confirm_button_2 的順序。
+        currency_label_box/reset_button/reset_confirm_button 與 default 模式
+        共用同一個畫面位置，只要校正過其中一種模式，另一種通常就不用重做。
 
 操作方式:
-    程式會照 currency_label_box -> reset_button -> reset_confirm_button ->
-    result_list_box -> result_row_y_bounds -> result_text_x_offset 的順序，
     逐項提示你「遊戲畫面該停在哪一步」、「滑鼠要移到哪裡」。
     - 移到定點後直接按 Enter：記錄並寫入 config.json，自動進入下一項。
     - 輸入 s 再 Enter：跳過這一項，保留 config.json 原本的值。
@@ -127,9 +137,86 @@ def save(config_path, data):
     config_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def calibrate_default(prompter, commit, regions):
+    """珍貴附加方塊 / 絕對附加方塊流程(plan.md step1~step4)。"""
+    commit("currency_label_box", prompter.capture_box(
+        "step1: 潛在能力面板「方塊」分頁，『使用貨幣』文字欄位"
+        "(顯示珍貴附加方塊/絕對附加方塊那格)"))
+
+    commit("reset_button", prompter.capture_point(
+        "step2: 同一畫面，『重新設定』按鈕"))
+
+    commit("reset_confirm_button", prompter.capture_point(
+        "step3: 按下重新設定後彈出的提示框，『確認』按鈕"))
+
+    commit("result_list_box", prompter.capture_box(
+        "step4: 重新設定後立即顯示的3個潛能清單，整塊區域"))
+
+    commit("result_row_y_bounds", prompter.capture_line_bounds(
+        "step4: 3個潛能清單，逐條分隔線(由上到下，共4條: 3列的上緣+最後一列下緣)", 4))
+
+    pt = prompter.capture_point(
+        "step4: 任一列『文字』開頭處(跳過左邊等級圖示，移到潛能名稱第一個字的左緣)")
+    if pt is not None:
+        offset = pt[0] - regions["result_list_box"][0]
+        commit("result_text_x_offset", offset)
+    else:
+        print(f"  (保留 result_text_x_offset 原值: {regions['result_text_x_offset']})")
+
+
+def calibrate_restore(prompter, commit, regions):
+    """恢復附加方塊流程(plan.md stepa1~stepa6)。
+
+    currency_label_box/reset_button/reset_confirm_button 與 default 模式共用
+    同一個畫面位置(只是使用貨幣文字不同)，這裡一併重新校正一次；若已經用
+    --mode default 校正過且畫面位置沒變，這3項可以直接輸入 s 跳過保留原值。
+    """
+    commit("currency_label_box", prompter.capture_box(
+        "stepa1: 潛在能力面板「方塊」分頁，『使用貨幣』文字欄位(顯示恢復附加方塊那格；"
+        "與一般流程共用同一格，已校正過可輸入 s 跳過)"))
+
+    commit("reset_button", prompter.capture_point(
+        "stepa2: 同一畫面，『重新設定』按鈕(與一般流程共用，已校正過可輸入 s 跳過)"))
+
+    commit("reset_confirm_button", prompter.capture_point(
+        "stepa3: 按下重新設定後彈出的提示框，『確認』按鈕(與一般流程共用，已校正過可"
+        "輸入 s 跳過；按下後會進入 BEFORE/AFTER 比較畫面)"))
+
+    commit("restore_result_list_box", prompter.capture_box(
+        "stepa4: BEFORE/AFTER比較畫面，右邊『AFTER』潛能組的3個潛能清單，整塊區域"))
+
+    commit("restore_result_row_y_bounds", prompter.capture_line_bounds(
+        "stepa4: AFTER潛能清單，逐條分隔線(由上到下，共4條: 3列的上緣+最後一列下緣)", 4))
+
+    pt = prompter.capture_point(
+        "stepa4: AFTER潛能清單任一列『文字』開頭處(跳過左邊等級圖示，移到潛能名稱第一個字的左緣)")
+    if pt is not None:
+        offset = pt[0] - regions["restore_result_list_box"][0]
+        commit("restore_result_text_x_offset", offset)
+    else:
+        print(f"  (保留 restore_result_text_x_offset 原值: {regions['restore_result_text_x_offset']})")
+
+    commit("restore_select_after_point", prompter.capture_point(
+        "stepa4: 潛能符合目標時要點選套用的位置(右邊『AFTER』潛能組)"))
+
+    commit("restore_reroll_button", prompter.capture_point(
+        "stepa5: AFTER不符合目標時要點的『重新設定1次』按鈕"))
+
+    commit("restore_reroll_confirm_button", prompter.capture_point(
+        "stepa6: 按下『重新設定1次』後依序跳出兩個確認提示框，第1個的『確認』按鈕"))
+
+    commit("restore_reroll_confirm_button_2", prompter.capture_point(
+        "stepa6: 按下第1個確認提示框的『確認』後跳出的第2個提示框，『確認』按鈕"))
+
+
 def main():
     parser = argparse.ArgumentParser(description="互動式座標校正工具")
     parser.add_argument("--config", default="config.json", help="設定檔路徑")
+    parser.add_argument(
+        "--mode", choices=["default", "restore"], default="default",
+        help="要校正哪一種流程的座標: default=珍貴附加方塊/絕對附加方塊(預設)，"
+             "restore=恢復附加方塊(BEFORE/AFTER比較畫面)",
+    )
     args = parser.parse_args()
     config_path = Path(args.config)
 
@@ -165,6 +252,7 @@ def main():
             return
 
     print(__doc__)
+    print(f"本次校正模式: --mode {args.mode}")
 
     stop_event = threading.Event()
     pause_event = threading.Event()
@@ -182,29 +270,10 @@ def main():
         print(f"  已寫入 config.json -> {key} = {value}")
 
     try:
-        commit("currency_label_box", prompter.capture_box(
-            "step1: 潛在能力面板「方塊」分頁，『使用貨幣』文字欄位"
-            "(顯示珍貴附加方塊/絕對附加方塊那格)"))
-
-        commit("reset_button", prompter.capture_point(
-            "step2: 同一畫面，『重新設定』按鈕"))
-
-        commit("reset_confirm_button", prompter.capture_point(
-            "step3: 按下重新設定後彈出的提示框，『確認』按鈕"))
-
-        commit("result_list_box", prompter.capture_box(
-            "step4: 重新設定後立即顯示的3個潛能清單，整塊區域"))
-
-        commit("result_row_y_bounds", prompter.capture_line_bounds(
-            "step4: 3個潛能清單，逐條分隔線(由上到下，共4條: 3列的上緣+最後一列下緣)", 4))
-
-        pt = prompter.capture_point(
-            "step4: 任一列『文字』開頭處(跳過左邊等級圖示，移到潛能名稱第一個字的左緣)")
-        if pt is not None:
-            offset = pt[0] - regions["result_list_box"][0]
-            commit("result_text_x_offset", offset)
+        if args.mode == "restore":
+            calibrate_restore(prompter, commit, regions)
         else:
-            print(f"  (保留 result_text_x_offset 原值: {regions['result_text_x_offset']})")
+            calibrate_default(prompter, commit, regions)
 
         print("\n全部項目校正完畢！")
     except Quit:

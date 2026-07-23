@@ -4,22 +4,27 @@
     [
       "",
       "INT +8%",
-      ""
+      "INT +6%"
     ],
     [
       "",
-      "STR +8%",
-      ""
+      "INT +8%",
+      "全屬性 +6%"
     ],
     [
       "",
-      "DEX +8%",
-      ""
+      "INT +8%",
+      "全屬性 +5%"
     ],
     [
       "",
-      "LUK +8%",
-      ""
+      "全屬性 +6%",
+      "全屬性 +5%"
+    ],
+    [
+      "",
+      "全屬性 +5%",
+      "全屬性 +5%"
     ]
   ],
   "log_lv": "debug",
@@ -34,35 +39,70 @@
     "ref_width": 1366,
     "ref_height": 768,
     "currency_label_box": [
-      1059,
-      482,
-      1146,
-      497
+      746,
+      514,
+      879,
+      526
     ],
     "currency_expected_texts": [
-      "珍貴附加方塊",
-      "絕對附加方塊"
+      "萌獸方塊"
+    ],
+    "restore_currency_expected_texts": [
+      "恢復附加方塊"
     ],
     "reset_button": [
-      1118,
-      707
+      827,
+      739
     ],
     "reset_confirm_button": [
-      649,
-      456
+      640,
+      447
     ],
     "result_list_box": [
-      990,
-      332,
-      1189,
-      402
+      953,
+      368,
+      1208,
+      442
     ],
     "result_row_y_bounds": [
-      336,
-      355,
-      378,
-      399
+      369,
+      391,
+      412,
+      432
     ],
-    "result_text_x_offset": 28
+    "result_text_x_offset": 28,
+    "restore_result_list_box": [
+      705,
+      328,
+      892,
+      394
+    ],
+    "restore_result_row_y_bounds": [
+      325,
+      348,
+      372,
+      395
+    ],
+    "restore_result_text_x_offset": 17,
+    "restore_select_after_point": [
+      811,
+      375
+    ],
+    "restore_reroll_button": [
+      693,
+      632
+    ],
+    "restore_reroll_confirm_button": [
+      653,
+      415
+    ],
+    "restore_reroll_confirm_button_2": [
+      653,
+      456
+    ],
+    "restore_select_after_confirm_button": [
+      632,
+      487
+    ]
   }
 }

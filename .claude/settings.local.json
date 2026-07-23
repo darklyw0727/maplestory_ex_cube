@@ -3,7 +3,7 @@
     "allow": [
       "Bash(.venv/Scripts/python -c ' *)",
       "Bash(.venv/Scripts/python -m pytest tests/ -v)",
-      "Bash(.venv/Scripts/python -c \"import src.main, src.controller, src.regions, src.config, src.ocr, src.window; print\\('all modules import OK'\\)\")"
+      "Bash(.venv/Scripts/python -m py_compile tools/locate.py src/controller.py src/regions.py)"
     ]
   }
 }
