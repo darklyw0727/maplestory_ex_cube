@@ -10,7 +10,8 @@ regions 比例換算；這裡改用單獨裁切好、以圖片自身尺寸為準
 
 fixtures:
 - reset_result_three.png (from step4.png)：珍貴/絕對附加方塊流程，重新設定後
-  直接顯示的3個潛能清單。
+  直接顯示的3個潛能清單(萌獸方塊操作流程與珍貴/絕對附加方塊完全一致，共用
+  同一套讀取/比對邏輯，不用另外準備截圖)。
 - restore_after_three.png (from stepa4.png)：恢復附加方塊流程，BEFORE/AFTER
   比較畫面中右邊AFTER的3個潛能清單。
 - currency_simple.png (from step1.png) / currency_restore.png (from
@@ -167,6 +168,15 @@ def test_detect_flow_simple():
 
 def test_detect_flow_restore():
     assert _detect_flow_with_fixture(CURRENCY_RESTORE_FIXTURE, CURRENCY_RESTORE_REGIONS) == "restore"
+
+
+def test_meng_shou_cube_registered_as_simple_flow_currency():
+    # 萌獸方塊操作流程與珍貴/絕對附加方塊完全一致，走同一個"simple"流程，
+    # 沒有專屬截圖，這裡直接確認它有被列入 currency_expected_texts。
+    from src.regions import DEFAULT_REGIONS
+
+    assert "萌獸方塊" in DEFAULT_REGIONS["currency_expected_texts"]
+    assert "萌獸方塊" in Regions({}).currency_expected_texts
 
 
 def test_goal_met_when_all_targets_present_name_only(result_rows):

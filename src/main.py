@@ -31,7 +31,7 @@ def setup_logging(cfg):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="自動洗珍貴/絕對附加方塊")
+    parser = argparse.ArgumentParser(description="自動洗珍貴/絕對/萌獸/恢復附加方塊")
     parser.add_argument("--config", default="config.json", help="設定檔路徑")
     parser.add_argument("--yes", action="store_true", help="略過開始前的確認提示")
     args = parser.parse_args()
@@ -48,8 +48,9 @@ def main():
 
     if not args.yes:
         print("=" * 60)
-        print("即將開始自動操作滑鼠使用珍貴附加方塊或絕對附加方塊。")
-        print("請確認遊戲已開啟、已進入潛在能力面板並選擇了珍貴附加方塊或絕對附加方塊。")
+        print("即將開始自動操作滑鼠使用方塊。")
+        print("請確認遊戲已開啟、已進入潛在能力面板並選擇了「珍貴附加方塊」「絕對附加方塊」")
+        print("「萌獸方塊」或「恢復附加方塊」其中一種，程式會自動判斷走哪個流程。")
         print("執行期間若要緊急中止，將滑鼠移到螢幕左上角，或按 Ctrl+C。")
         print("=" * 60)
         resp = input("輸入 y 開始執行: ").strip().lower()

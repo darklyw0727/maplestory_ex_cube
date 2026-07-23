@@ -6,7 +6,8 @@ client area 尺寸) 為基準，記錄在 config.json 的 "regions" 區塊(單�
 
 程式依讀取到的「使用貨幣」文字自動判斷走哪一種流程(見 plan.md「洗方塊流程」)：
 
-1. 珍貴附加方塊 / 絕對附加方塊(currency_expected_texts 判斷)：
+1. 珍貴附加方塊 / 絕對附加方塊 / 萌獸方塊(currency_expected_texts 判斷；
+   萌獸方塊的操作流程與珍貴/絕對附加方塊完全一致)：
    step1 使用貨幣欄位(currency_label_box) -> step2「重新設定」按鈕(reset_button)
    -> step3 確認彈窗按鈕(reset_confirm_button) -> step4 重設後直接出現的3個
    潛能(result_list_box/result_row_y_bounds/result_text_x_offset)，沒有
@@ -35,7 +36,7 @@ DEFAULT_REGIONS = {
     # step1/stepa1: "使用貨幣" 欄位中間灰色藥丸按鈕文字區域(兩種流程共用同一個
     # 畫面位置，只是文字不同)，用來確認目前選擇的是哪一種方塊、走哪個流程
     "currency_label_box": [865, 540, 1128, 564],
-    "currency_expected_texts": ["珍貴附加方塊", "絕對附加方塊"],
+    "currency_expected_texts": ["珍貴附加方塊", "絕對附加方塊", "萌獸方塊"],
     "restore_currency_expected_texts": ["恢復附加方塊"],
     # step2/stepa2: 「重新設定」按鈕(兩種流程共用)
     "reset_button": [997, 762],
@@ -44,7 +45,7 @@ DEFAULT_REGIONS = {
     "reset_confirm_button": [632, 487],
     # step4: 重新設定後直接顯示的3個潛能清單方塊，含每一列的上下邊界
     # (共4條分隔線，切出3列)，用來讀取結果比對目標潛能(僅「珍貴/絕對附加
-    # 方塊」流程使用)
+    # 方塊/萌獸方塊」流程使用)
     "result_list_box": [578, 345, 780, 422],
     "result_row_y_bounds": [347, 372, 397, 420],
     # 潛能文字起始位置，相對於整列左緣的 x 偏移 (跳過 tier 圖示)

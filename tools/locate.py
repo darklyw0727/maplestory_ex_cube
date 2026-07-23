@@ -5,7 +5,7 @@
 用法:
     python tools/locate.py [--config config.json] [--mode default|restore]
 
-    --mode default(預設): 校正「珍貴附加方塊」/「絕對附加方塊」流程用的座標，
+    --mode default(預設): 校正「珍貴附加方塊」/「絕對附加方塊」/「萌獸方塊」流程用的座標，
         依 currency_label_box -> reset_button -> reset_confirm_button ->
         result_list_box -> result_row_y_bounds -> result_text_x_offset 的順序。
     --mode restore: 校正「恢復附加方塊」流程(BEFORE/AFTER比較畫面)用的座標，
@@ -138,10 +138,10 @@ def save(config_path, data):
 
 
 def calibrate_default(prompter, commit, regions):
-    """珍貴附加方塊 / 絕對附加方塊流程(plan.md step1~step4)。"""
+    """珍貴附加方塊 / 絕對附加方塊 / 萌獸方塊流程(plan.md step1~step4，三者操作流程完全一致)。"""
     commit("currency_label_box", prompter.capture_box(
         "step1: 潛在能力面板「方塊」分頁，『使用貨幣』文字欄位"
-        "(顯示珍貴附加方塊/絕對附加方塊那格)"))
+        "(顯示珍貴附加方塊/絕對附加方塊/萌獸方塊那格)"))
 
     commit("reset_button", prompter.capture_point(
         "step2: 同一畫面，『重新設定』按鈕"))
@@ -214,7 +214,7 @@ def main():
     parser.add_argument("--config", default="config.json", help="設定檔路徑")
     parser.add_argument(
         "--mode", choices=["default", "restore"], default="default",
-        help="要校正哪一種流程的座標: default=珍貴附加方塊/絕對附加方塊(預設)，"
+        help="要校正哪一種流程的座標: default=珍貴附加方塊/絕對附加方塊/萌獸方塊(預設)，"
              "restore=恢復附加方塊(BEFORE/AFTER比較畫面)",
     )
     args = parser.parse_args()

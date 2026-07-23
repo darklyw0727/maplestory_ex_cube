@@ -81,7 +81,7 @@ class Controller:
     def detect_flow(self) -> str:
         """讀取「使用貨幣」欄位，判斷這次要走哪種流程。
 
-        回傳 "simple"(珍貴附加方塊/絕對附加方塊) 或 "restore"(恢復附加方塊)。
+        回傳 "simple"(珍貴附加方塊/絕對附加方塊/萌獸方塊) 或 "restore"(恢復附加方塊)。
         完全辨識不到文字(代表面板可能根本沒開/擷取錯位置)才視為致命錯誤，
         辨識到但相似度偏低則只警告、不中止流程，留給使用者自行判斷。
         """
@@ -95,7 +95,7 @@ class Controller:
         if best_score < 0.15:
             raise AbortError(
                 f"讀不到使用貨幣欄位內容(讀到「{label}」)，"
-                f"請確認已開啟潛在能力面板並選擇「珍貴附加方塊」「絕對附加方塊」或「恢復附加方塊」。"
+                f"請確認已開啟潛在能力面板並選擇「珍貴附加方塊」「絕對附加方塊」「萌獸方塊」或「恢復附加方塊」。"
             )
         if best_score < 0.4:
             log.warning(
@@ -130,7 +130,7 @@ class Controller:
                 return True
         return False
 
-    # ---------- 流程1: 珍貴附加方塊 / 絕對附加方塊 ----------
+    # ---------- 流程1: 珍貴附加方塊 / 絕對附加方塊 / 萌獸方塊 ----------
 
     def click_reset(self):
         log.debug("點擊「重新設定」")
@@ -222,5 +222,5 @@ class Controller:
             log.info("偵測到「恢復附加方塊」，走恢復流程(BEFORE/AFTER比較)")
             return self._run_restore_flow()
 
-        log.info("偵測到「珍貴附加方塊」或「絕對附加方塊」，走一般流程")
+        log.info("偵測到「珍貴附加方塊」「絕對附加方塊」或「萌獸方塊」，走一般流程")
         return self._run_simple_flow()

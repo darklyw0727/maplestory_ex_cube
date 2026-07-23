@@ -3,7 +3,8 @@
     "allow": [
       "Bash(.venv/Scripts/python -c ' *)",
       "Bash(.venv/Scripts/python -m pytest tests/ -v)",
-      "Bash(.venv/Scripts/python -m py_compile tools/locate.py src/controller.py src/regions.py)"
+      "Bash(.venv/Scripts/python -m py_compile tools/locate.py src/controller.py src/regions.py)",
+      "Bash(.venv/Scripts/python -m py_compile src/controller.py src/regions.py src/main.py tools/locate.py)"
     ]
   }
 }
