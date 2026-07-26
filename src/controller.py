@@ -160,6 +160,10 @@ class Controller:
             rows = self.read_potentials()
             log.info("第%d次重設後的潛能: %s", self.used_cubes, [r.display for r in rows])
 
+            for r in rows:
+                if r.display == "":
+                    return "empty"
+
             if self.is_goal_met(rows):
                 log.info("已達成目標潛能，共使用 %d 個方塊，結束程式", self.used_cubes)
                 return "success"
