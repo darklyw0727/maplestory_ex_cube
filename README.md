@@ -12,29 +12,43 @@
   潛能讓你選擇套用哪一組，程式只看右邊AFTER，符合目標就點選套用，不符合就點
   「重新設定1次」再骰一輪。
 
-## 安裝
+使用上分成三個步驟，以下依序說明：**1. 架設 Python 環境 → 2. 設定 config.json
+→ 3. 啟動程式(先用 `tools/locate.py` 校正座標，再執行 `run.py`)**。
+
+也可以改用整合了目標潛能設定、座標校正、執行於一體的 PyQt6 圖形介面，見下方
+「圖形介面 (GUI)」，環境還是要先照第1步架好，之後就不需要再手動編輯
+`config.json` 或跑 `tools/locate.py` 這兩支指令了。
+
+## 1. 架設 Python 環境
 
 滑鼠控制用 [pyautogui](https://pyautogui.readthedocs.io/)，畫面文字辨識用
 [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)。PaddleOCR 底層的
-`paddlepaddle` 目前還沒有 Python 3.14 的預編譯版本，**必須用 Python 3.13 (或更早)**：
+`paddlepaddle` 目前還沒有 Python 3.14 的預編譯版本，**必須用 Python 3.13 (或更早)**。
 
-安裝方式可選用python虛擬環境或python系統環境，不希望此程式所使用到的library影響到日常開發環境時請使用python虛擬環境，一般使用者則可以將library直接安裝在系統環境中
+安裝方式可選用 Python 虛擬環境或 Python 系統環境：不希望此程式用到的 library
+影響到日常開發環境時，請使用虛擬環境；一般使用者則可以將 library 直接安裝在
+系統環境中。
 
-### Python系統環境安裝
+### 方式A：安裝在 Python 系統環境
+
 ```
 pip install -r requirements.txt
 ```
 
-### Python虛擬環境安裝
+### 方式B：安裝在 Python 虛擬環境(建議)
+
 ```
 py -3.13 -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
 ```
 
+之後執行本專案所有指令(`tools/locate.py`、`run.py`、`pytest`)都要改用
+`.venv\Scripts\python` 而不是系統的 `python`，範例都以虛擬環境路徑表示。
+
 第一次執行時 PaddleOCR 會自動下載偵測/辨識模型(存到 `~/.paddlex/official_models/`)，
 需要網路連線，之後就會用本機快取，不用再下載。
 
-## 設定 (config.json)
+## 2. 設定 config.json
 
 ```json
 {
@@ -50,7 +64,7 @@ py -3.13 -m venv .venv
   "click_delay_sec": 0.35,
   "post_action_wait_sec": 0.6,
   "dry_run": false,
-  "regions": { "...": "所有按鈕/讀取區域座標，見下方「座標校正」" }
+  "regions": { "...": "所有按鈕/讀取區域座標，見下方「座標校正」，設定時不用管這塊" }
 }
 ```
 
@@ -77,14 +91,22 @@ py -3.13 -m venv .venv
     百分比、一個是固定數值的潛能(例如"MaxMP"同時出現 +11% 和 +300 兩種)。
 - `log_lv`：`"debug"` 會印出每次點擊的詳細座標，其餘(含預設)只印重點流程訊息。
 - `max_cubes`：最多使用幾個方塊，`0` 代表不限制。
+- `window_title`：遊戲視窗標題，預設「貓貓TMS」，若你的視窗標題不同請修改這裡。
 - `dry_run`：`true` 時只讀取畫面、印出判斷結果，不會真的點擊滑鼠(用來乾跑測試座標/OCR)。
+- `regions`：所有滑鼠點擊/畫面讀取用的座標，設定 config 時通常不用手動編輯這塊，
+  下一節會說明如何用 `tools/locate.py` 自動校正並寫入。
 
-## 座標校正 (regions)
+## 3. 啟動程式
 
-所有滑鼠點擊/畫面讀取用的座標都放在 `config.json` 的 `regions` 區塊，不用改程式碼。
-座標是以 `ref_width` x `ref_height`(預設 1360x793，對應 plan.md 附圖的視窗大小)這個
-「參考解析度」下的像素記錄，執行時會依實際視窗大小等比例換算，因此視窗大小只要沒
-差異太大都還算容錯。各欄位意義：
+啟動分兩步：**先用 `tools/locate.py` 校正座標，再執行 `run.py`**。座標沒校正過
+(或跟預設值差異太大)，滑鼠會點不準，所以第一次使用務必先做校正。
+
+### 3.1 校正座標 (`tools/locate.py`)
+
+所有滑鼠點擊/畫面讀取用的座標都放在 `config.json` 的 `regions` 區塊，不用改
+程式碼。座標是以 `ref_width` x `ref_height`(預設 1360x793，對應 plan.md 附圖
+的視窗大小)這個「參考解析度」下的像素記錄，執行時會依實際視窗大小等比例換算，
+因此視窗大小只要沒差異太大都還算容錯。各欄位意義：
 
 | 欄位 | 說明 |
 | --- | --- |
@@ -96,7 +118,9 @@ py -3.13 -m venv .venv
 | `restore_select_after_point` | (恢復流程)AFTER符合目標時，點選套用AFTER潛能組的位置 |
 | `restore_reroll_button` / `restore_reroll_confirm_button` / `restore_reroll_confirm_button_2` | (恢復流程)AFTER不符合目標時要點的「重新設定1次」按鈕，與其後依序跳出的**兩個**確認彈窗各自的「確認」按鈕 |
 
-若遊戲改版、UI位置跟預設值對不上、或想確認目前設定是否準確，可執行座標校正工具：
+先手動開啟遊戲，進入潛在能力面板、切到「方塊」分頁，並選擇你要使用的方塊種類
+(「珍貴附加方塊」「絕對附加方塊」「萌獸方塊」或「恢復附加方塊」其中一種)，
+接著執行校正工具：
 
 ```
 .venv\Scripts\python tools/locate.py
@@ -123,7 +147,10 @@ py -3.13 -m venv .venv
 就會記錄並立刻寫回 `config.json`，自動進入下一項，不用自己輸入名稱。也支援
 輸入 `s` 跳過該項(保留原值)、`q` 結束校正(已記錄的項目不會遺失)。
 
-## 執行
+若遊戲改版、UI位置跟預設值對不上、或換了新視窗大小/位置，重新執行這個工具
+再校正一次即可，不需要改程式碼。
+
+### 3.2 執行 (`run.py`)
 
 1. 先手動在遊戲中開啟潛在能力面板、切到「方塊」分頁並選擇「珍貴附加方塊」
    「絕對附加方塊」「萌獸方塊」或「恢復附加方塊」其中一種(對應 plan.md 步驟1)，
@@ -141,16 +168,53 @@ py -3.13 -m venv .venv
 
 執行紀錄會寫在 `logs/run_*.log`。
 
-## 測試（不需要開遊戲）
+## 圖形介面 (GUI)
 
-`tests/test_reference_screenshots.py` 用從 plan.md 附的截圖裁出的
-`tests/fixtures/*.png`(重新設定後3個潛能清單、AFTER潛能清單、兩種流程的使用
-貨幣文字等紅框範圍)驗證 OCR 辨識、流程判斷(`detect_flow`)、目標比對邏輯是否
-正確：
+除了 CLI(`tools/locate.py` + `run.py`)之外，也提供一個 PyQt6 圖形介面，把目標潛能
+設定、座標校正、執行整合在同一個視窗：
+
+```
+.venv\Scripts\python gui.py
+```
+
+- **目標潛能組設定區**：視覺化編輯 `target_potentials`——每組3個輸入框，可以「+ 新增
+  目標組合」新增一組、用每組右邊的 ↑/↓ 調整優先權順序(由上到下優先權由高到低)、
+  「刪除」移除整組(至少保留一組)；「儲存目標潛能設定」會把目前畫面上的內容寫回
+  `config.json`。
+- **開始/停止按鈕**：「開始」會先自動儲存目前的目標潛能設定，跳出確認提示後才開始
+  自動化，執行中的 log 會即時顯示在下方文字區；「停止」會在目前這一輪跑完後收尾
+  (一般流程：這次重新設定判斷完就停；恢復流程：這次AFTER判斷完就停、不會套用)，
+  不是立即中斷，跟 CLI 版本一樣可以隨時把滑鼠移到螢幕角落觸發 fail-safe 立即中止。
+- **座標校正**：
+  - 「校正流程」下拉選單：切換要校正「一般流程(珍貴/絕對附加方塊/萌獸方塊)」還是
+    「恢復流程(恢復附加方塊)」，對應 CLI 的 `tools/locate.py --mode default` /
+    `--mode restore`；下方「單一按鈕校正」的下拉選單內容會跟著切換。
+  - 「全部校正」：依序引導校正目前選定流程的全部欄位，跟 `tools/locate.py` 是同一套
+    邏輯(共用 `src/calibration.py`)、同一份步驟清單，行為完全一致。
+  - 「單一按鈕校正」：從下拉選單挑選某一個欄位，只重新校正那一項，不用整套重跑；
+    兩種流程共用的欄位(使用貨幣欄位、重新設定按鈕、確認按鈕)只要校正過其中一種
+    流程，通常另一種就不用重做。
+  校正時會有一個小視窗即時顯示滑鼠所在的參考解析度座標，移到定點後按「記錄」即可，
+  也可以「跳過本項」保留原值。
+
+首次開啟視窗會先在背景初始化 PaddleOCR 引擎(需要一點時間，尤其是第一次要下載模型)，
+初始化完成前「開始」與「座標校正」按鈕會維持停用狀態。
+
+## 測試（不需要開遊戲）
 
 ```
 .venv\Scripts\python -m pytest tests/ -v
 ```
+
+- `tests/test_reference_screenshots.py`：用從 plan.md 附的截圖裁出的
+  `tests/fixtures/*.png`(重新設定後3個潛能清單、AFTER潛能清單、兩種流程的使用
+  貨幣文字等紅框範圍)驗證 OCR 辨識、流程判斷(`detect_flow`)、目標比對邏輯是否
+  正確。
+- `tests/test_calibration.py`：驗證 `src/calibration.py` 的校正精靈邏輯(point/
+  box/lines/text_offset 四種校正種類、跳過、STEPS_DEFAULT/STEPS_RESTORE 步驟
+  清單本身的一致性)，CLI 與 GUI 的校正共用這份邏輯。
+- `tests/test_controller_stop.py`：驗證 `Controller` 的 `stop_event`(GUI「停止」
+  按鈕用)在兩種流程下都能乾淨地中止，不會誤點選套用/誤用掉方塊。
 
 ## 已知限制
 
@@ -161,3 +225,8 @@ py -3.13 -m venv .venv
 - 已在真實遊戲視窗上實際測試調整過座標與流程；若換了新的視窗大小/位置或遊戲改版
   導致點不準，先用 `tools/locate.py` 重新校正，仍有問題建議先開 `dry_run: true`
   觀察 log 判斷是哪個步驟不對。
+- `gui.py` 圖形介面目前只驗證過視窗能正常建立、目標潛能組編輯/存檔、校正流程
+  下拉選單切換、找到真實遊戲視窗且不誤觸任何按鈕，**尚未在真實視窗環境實際點過
+  「開始」跑完整流程或跑完一次「全部校正」**，建議第一次使用先搭配
+  `dry_run: true` 觀察 log，或先用 CLI(`tools/locate.py` + `run.py`)驗證整體
+  流程沒問題後再改用 GUI。

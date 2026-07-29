@@ -27,10 +27,11 @@ class AbortError(RuntimeError):
 
 
 class Controller:
-    def __init__(self, config: Config, window: GameWindow):
+    def __init__(self, config: Config, window: GameWindow, stop_event=None):
         self.cfg = config
         self.win = window
         self.used_cubes = 0
+        self.stop_event = stop_event  # threading.Event，供GUI等外部要求提早停止(可為None)
 
     # ---------- 基礎工具 ----------
 
@@ -150,6 +151,10 @@ class Controller:
 
     def _run_simple_flow(self):
         while True:
+            if self.stop_event is not None and self.stop_event.is_set():
+                log.info("收到停止要求，結束")
+                return "stopped"
+
             if self.cfg.max_cubes and self.used_cubes >= self.cfg.max_cubes:
                 log.info("已達方塊使用上限(%d)，結束", self.cfg.max_cubes)
                 return "limit_reached"
@@ -184,7 +189,6 @@ class Controller:
         self._wait(self.cfg.post_action_wait_sec)
         log.debug("點擊「重新設定1次」確認彈窗「確認」(第1個)")
         self._click(self.cfg.regions.restore_reroll_confirm_button)
-        self._click(self.cfg.regions.restore_reroll_confirm_button)
         self._wait(self.cfg.post_action_wait_sec)
         log.debug("點擊「重新設定1次」確認彈窗「確認」(第2個)")
         self._click(self.cfg.regions.restore_reroll_confirm_button_2)
@@ -200,6 +204,10 @@ class Controller:
         self.used_cubes += 1
 
         while True:
+            if self.stop_event is not None and self.stop_event.is_set():
+                log.info("收到停止要求，結束(維持BEFORE，不套用AFTER)")
+                return "stopped"
+
             rows = self.read_restore_after_potentials()
             log.info("第%d次重設後AFTER的潛能: %s", self.used_cubes, [r.display for r in rows])
 

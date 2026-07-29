@@ -6,7 +6,7 @@ from pathlib import Path
 
 from .config import load_config
 from .controller import AbortError, Controller
-from .window import FailSafeAbort, GameWindow
+from .window import FailSafeAbort, GameWindow, ensure_dpi_aware
 from . import ocr
 
 
@@ -31,6 +31,8 @@ def setup_logging(cfg):
 
 
 def main():
+    ensure_dpi_aware()
+
     parser = argparse.ArgumentParser(description="自動洗珍貴/絕對/萌獸/恢復附加方塊")
     parser.add_argument("--config", default="config.json", help="設定檔路徑")
     parser.add_argument("--yes", action="store_true", help="略過開始前的確認提示")

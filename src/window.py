@@ -12,13 +12,19 @@ pyautogui.FAILSAFE = True  # 游標移到螢幕四個角落任一個即觸發 Fa
 pyautogui.PAUSE = 0  # 節奏由 controller 的 click_delay_sec/post_action_wait_sec 自行控制
 
 
-def _set_dpi_aware():
+def ensure_dpi_aware():
     """宣告本程式為 DPI-aware。
 
     若螢幕顯示縮放不是100%(常見於筆電/高解析度螢幕，例如125%/150%)，未宣告
     DPI-aware 的程式從 win32gui 讀到的視窗座標會是「縮放後」的邏輯座標，但
     pyautogui 移動游標用的是「實際物理像素」座標，兩者對不齊會導致算出來
     的點擊座標整個偏掉(輕則點不準，重則游標跑到画面外、看起來完全沒反應)。
+
+    只有 CLI 進入點(run.py / tools/locate.py)需要呼叫這個函式。PyQt6 GUI
+    (gui.py)不要呼叫——Qt6 在 Windows 上預設就會自己設定 per-monitor-v2
+    DPI-aware，若這裡搶先設定過，Qt 內部再次嘗試設定時會失敗，印出
+    「SetProcessDpiAwarenessContext() failed: 存取被拒」的警告(雖然無害，
+    但沒必要，交給 Qt 自己處理最單純)。
     """
     user32 = ctypes.windll.user32
     try:
@@ -36,9 +42,6 @@ def _set_dpi_aware():
         user32.SetProcessDPIAware()
     except OSError:
         pass
-
-
-_set_dpi_aware()
 
 
 class FailSafeAbort(RuntimeError):

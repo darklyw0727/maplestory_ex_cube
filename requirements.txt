@@ -5,4 +5,5 @@ pywin32
 mss
 paddlepaddle
 paddleocr
+PyQt6
 pytest
