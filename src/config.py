@@ -16,6 +16,7 @@ class Config:
     click_delay_sec: float
     post_action_wait_sec: float
     dry_run: bool
+    stop_hotkey: str
     regions: Regions
 
     def __post_init__(self):
@@ -43,5 +44,6 @@ def load_config(path: str = "config.json") -> Config:
         click_delay_sec=float(data.get("click_delay_sec", 0.35)),
         post_action_wait_sec=float(data.get("post_action_wait_sec", 0.6)),
         dry_run=bool(data.get("dry_run", False)),
+        stop_hotkey=data.get("stop_hotkey", "ctrl+f2"),
         regions=Regions(data.get("regions", {})),
     )

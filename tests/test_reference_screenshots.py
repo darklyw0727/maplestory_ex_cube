@@ -93,6 +93,7 @@ def _make_controller(target_potentials, regions=FIXTURE_REGIONS):
         click_delay_sec=0,
         post_action_wait_sec=0,
         dry_run=True,
+        stop_hotkey="",
         regions=regions,
     )
     ctrl = Controller.__new__(Controller)

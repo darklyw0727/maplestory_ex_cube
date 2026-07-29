@@ -2,13 +2,14 @@ import json
 import logging
 from pathlib import Path
 
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QObject, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QPushButton,
     QTextEdit, QComboBox, QLabel, QMessageBox,
 )
 
 from src import calibration, ocr
+from src import hotkey as hotkey_mod
 from .calibration_dialog import CalibrationDialog
 from .combo_editor import TargetPotentialsEditor
 from .worker import AutomationWorker
@@ -34,6 +35,13 @@ class _OcrInitWorker(QThread):
             self.failed.emit(str(e))
 
 
+class _HotkeyBridge(QObject):
+    """全域熱鍵的callback是在keyboard套件自己的背景執行緒上執行的，不能直接操作
+    Qt元件；透過signal轉回GUI主執行緒(跨執行緒emit會自動排入主執行緒的事件佇列)。"""
+
+    triggered = pyqtSignal(str)
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -46,6 +54,10 @@ class MainWindow(QMainWindow):
         self.regions_dict = calibration.merge_regions(self.config_data)
 
         self.automation_worker: AutomationWorker | None = None
+        self._run_hotkey_bridge = _HotkeyBridge()
+        self._run_hotkey_bridge.triggered.connect(self._on_run_hotkey)
+        self._start_hotkey_handle = None
+        self._stop_hotkey_handle = None
 
         central = QWidget()
         self.setCentralWidget(central)
@@ -135,6 +147,7 @@ class MainWindow(QMainWindow):
     def _on_ocr_ready(self):
         self.status_label.setText("就緒")
         self._set_busy(False)
+        self._register_run_hotkeys()
 
     def _on_ocr_failed(self, message: str):
         self.status_label.setText("OCR 引擎初始化失敗")
@@ -204,7 +217,8 @@ class MainWindow(QMainWindow):
         ref_w, ref_h = self.regions_dict["ref_width"], self.regions_dict["ref_height"]
         steps = calibration.STEPS_BY_MODE[self._current_mode()]
         dialog = CalibrationDialog(
-            hwnd, ref_w, ref_h, self.regions_dict, steps, self._on_region_step_saved, parent=self
+            hwnd, ref_w, ref_h, self.regions_dict, steps, self._on_region_step_saved,
+            hotkeys=self._calibration_hotkeys(), parent=self,
         )
         dialog.exec()
 
@@ -216,9 +230,42 @@ class MainWindow(QMainWindow):
         step = calibration.STEP_BY_KEY_BY_MODE[self._current_mode()][key]
         ref_w, ref_h = self.regions_dict["ref_width"], self.regions_dict["ref_height"]
         dialog = CalibrationDialog(
-            hwnd, ref_w, ref_h, self.regions_dict, [step], self._on_region_step_saved, parent=self
+            hwnd, ref_w, ref_h, self.regions_dict, [step], self._on_region_step_saved,
+            hotkeys=self._calibration_hotkeys(), parent=self,
         )
         dialog.exec()
+
+    def _calibration_hotkeys(self) -> dict:
+        return {
+            "confirm": self.config_data.get("calibrate_confirm_hotkey", "ctrl+f3"),
+            "skip": self.config_data.get("calibrate_skip_hotkey", "ctrl+f4"),
+            "finish": self.config_data.get("calibrate_finish_hotkey", "ctrl+f5"),
+        }
+
+    # ---------- 開始/停止熱鍵(全程有效，不受目前是否執行中影響) ----------
+
+    def _register_run_hotkeys(self):
+        start_hotkey = self.config_data.get("start_hotkey", "ctrl+f1")
+        stop_hotkey = self.config_data.get("stop_hotkey", "ctrl+f2")
+        self._start_hotkey_handle = hotkey_mod.register(
+            start_hotkey, lambda: self._run_hotkey_bridge.triggered.emit("start")
+        )
+        self._stop_hotkey_handle = hotkey_mod.register(
+            stop_hotkey, lambda: self._run_hotkey_bridge.triggered.emit("stop")
+        )
+        hints = []
+        if self._start_hotkey_handle is not None:
+            hints.append(f"開始={start_hotkey}")
+        if self._stop_hotkey_handle is not None:
+            hints.append(f"停止={stop_hotkey}")
+        if hints:
+            self._append_log(f"(全域熱鍵已啟用: {', '.join(hints)}，不用切換視窗)")
+
+    def _on_run_hotkey(self, action: str):
+        if action == "start" and self.start_btn.isEnabled():
+            self._on_start()
+        elif action == "stop" and self.stop_btn.isEnabled():
+            self._on_stop()
 
     # ---------- 開始/停止 ----------
 
@@ -233,13 +280,16 @@ class MainWindow(QMainWindow):
         self.config_data["target_potentials"] = combos
         self._write_config()
 
+        stop_hotkey = self.config_data.get("stop_hotkey", "ctrl+f2")
+        hotkey_hint = f"或按下熱鍵 {stop_hotkey}(不用切換視窗)，" if stop_hotkey else ""
         resp = QMessageBox.question(
             self,
             "確認開始",
             "即將開始自動操作滑鼠使用方塊。\n"
             "請確認遊戲已開啟、已進入潛在能力面板並選擇了「珍貴附加方塊」「絕對附加方塊」\n"
             "「萌獸方塊」或「恢復附加方塊」其中一種，程式會自動判斷走哪個流程。\n"
-            "執行期間若要緊急停止，可把滑鼠移到螢幕任一角落，或點擊「停止」按鈕。\n\n"
+            f"執行期間若要緊急停止，可把滑鼠移到螢幕任一角落、點擊「停止」按鈕，{hotkey_hint}"
+            "都會在這一輪結束後停止。\n\n"
             "是否開始？",
         )
         if resp != QMessageBox.StandardButton.Yes:
@@ -287,3 +337,8 @@ class MainWindow(QMainWindow):
         QMessageBox.critical(self, "執行失敗", message)
         self.status_label.setText("就緒")
         self._reset_run_buttons()
+
+    def closeEvent(self, event):
+        hotkey_mod.unregister(self._start_hotkey_handle)
+        hotkey_mod.unregister(self._stop_hotkey_handle)
+        super().closeEvent(event)

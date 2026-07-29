@@ -6,4 +6,5 @@ mss
 paddlepaddle
 paddleocr
 PyQt6
+keyboard
 pytest

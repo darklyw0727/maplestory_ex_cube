@@ -64,6 +64,11 @@ py -3.13 -m venv .venv
   "click_delay_sec": 0.35,
   "post_action_wait_sec": 0.6,
   "dry_run": false,
+  "start_hotkey": "ctrl+f1",
+  "stop_hotkey": "ctrl+f2",
+  "calibrate_confirm_hotkey": "ctrl+f3",
+  "calibrate_skip_hotkey": "ctrl+f4",
+  "calibrate_finish_hotkey": "ctrl+f5",
   "regions": { "...": "所有按鈕/讀取區域座標，見下方「座標校正」，設定時不用管這塊" }
 }
 ```
@@ -93,6 +98,16 @@ py -3.13 -m venv .venv
 - `max_cubes`：最多使用幾個方塊，`0` 代表不限制。
 - `window_title`：遊戲視窗標題，預設「貓貓TMS」，若你的視窗標題不同請修改這裡。
 - `dry_run`：`true` 時只讀取畫面、印出判斷結果，不會真的點擊滑鼠(用來乾跑測試座標/OCR)。
+- `start_hotkey` / `stop_hotkey`：全域開始/停止熱鍵(語法例如 `"f8"`、`"ctrl+alt+q"`)，
+  不管遊戲視窗有沒有 focus 都能觸發；`start_hotkey` 只在 GUI 有作用(等同點擊
+  「開始」)，CLI 沒有「啟動中」以外的待機狀態，不需要開始熱鍵。停止會在目前這一輪
+  跑完後收尾(一般流程：這次重新設定判斷完就停；恢復流程：這次AFTER判斷完就停、
+  不會套用)，不是立即中斷。設成空字串 `""` 則不註冊該熱鍵，停止仍可改用滑鼠移到
+  螢幕角落、Ctrl+C(CLI)或視窗裡的按鈕(GUI)。
+- `calibrate_confirm_hotkey` / `calibrate_skip_hotkey` / `calibrate_finish_hotkey`：
+  只有 GUI 的座標校正對話框會用到，分別對應「記錄」「跳過本項」「結束」。校正時
+  滑鼠要停在遊戲畫面上的定點，**務必用這三個熱鍵觸發，不要點對話框裡的按鈕**——
+  點按鈕會讓滑鼠先移到按鈕上，記錄到的會是按鈕座標而不是遊戲畫面上的定點。
 - `regions`：所有滑鼠點擊/畫面讀取用的座標，設定 config 時通常不用手動編輯這塊，
   下一節會說明如何用 `tools/locate.py` 自動校正並寫入。
 
@@ -163,7 +178,9 @@ py -3.13 -m venv .venv
 
 3. 依提示輸入 `y` 開始，程式會倒數3秒後開始自動操作。
 4. **緊急停止**：執行期間把滑鼠移到螢幕**任一角落**即會觸發 pyautogui 的 fail-safe
-   中止(`pyautogui.FAILSAFE`)；也可以直接 Ctrl+C。
+   中止(`pyautogui.FAILSAFE`)；也可以直接 Ctrl+C；或按下 `stop_hotkey` 設定的
+   全域熱鍵(預設 `ctrl+f2`)，**不用切換視窗**、遊戲畫面保持在前景也能觸發，會在
+   這一輪結束後停止(不是立即中斷)。
 5. 點擊完不會把滑鼠移回原位，游標會停在最後一次點擊的位置。
 
 執行紀錄會寫在 `logs/run_*.log`。
@@ -185,6 +202,8 @@ py -3.13 -m venv .venv
   自動化，執行中的 log 會即時顯示在下方文字區；「停止」會在目前這一輪跑完後收尾
   (一般流程：這次重新設定判斷完就停；恢復流程：這次AFTER判斷完就停、不會套用)，
   不是立即中斷，跟 CLI 版本一樣可以隨時把滑鼠移到螢幕角落觸發 fail-safe 立即中止。
+  這兩個動作**全程**都可以用全域熱鍵觸發，不用點擊視窗——`start_hotkey`(預設
+  `ctrl+f1`)、`stop_hotkey`(預設 `ctrl+f2`)，遊戲畫面保持在前景也能按。
 - **座標校正**：
   - 「校正流程」下拉選單：切換要校正「一般流程(珍貴/絕對附加方塊/萌獸方塊)」還是
     「恢復流程(恢復附加方塊)」，對應 CLI 的 `tools/locate.py --mode default` /
@@ -194,8 +213,11 @@ py -3.13 -m venv .venv
   - 「單一按鈕校正」：從下拉選單挑選某一個欄位，只重新校正那一項，不用整套重跑；
     兩種流程共用的欄位(使用貨幣欄位、重新設定按鈕、確認按鈕)只要校正過其中一種
     流程，通常另一種就不用重做。
-  校正時會有一個小視窗即時顯示滑鼠所在的參考解析度座標，移到定點後按「記錄」即可，
-  也可以「跳過本項」保留原值。
+  校正時會有一個小視窗即時顯示滑鼠所在的參考解析度座標。**記錄／跳過／結束建議用
+  熱鍵觸發**——`calibrate_confirm_hotkey`(預設 `ctrl+f3`)、`calibrate_skip_hotkey`
+  (預設 `ctrl+f4`)、`calibrate_finish_hotkey`(預設 `ctrl+f5`)。這三個動作也有
+  對應按鈕，但**點按鈕會讓滑鼠先移過去**，記錄到的會是按鈕座標而不是遊戲畫面上
+  的定點，所以校正時請用熱鍵、不要點按鈕。
 
 首次開啟視窗會先在背景初始化 PaddleOCR 引擎(需要一點時間，尤其是第一次要下載模型)，
 初始化完成前「開始」與「座標校正」按鈕會維持停用狀態。
@@ -215,6 +237,8 @@ py -3.13 -m venv .venv
   清單本身的一致性)，CLI 與 GUI 的校正共用這份邏輯。
 - `tests/test_controller_stop.py`：驗證 `Controller` 的 `stop_event`(GUI「停止」
   按鈕用)在兩種流程下都能乾淨地中止，不會誤點選套用/誤用掉方塊。
+- `tests/test_hotkey.py`：驗證 `src/hotkey.py` 的錯誤處理(熱鍵為空、註冊/取消
+  註冊失敗都不應該讓程式掛掉)，用假的 `keyboard` 模組取代，不會真的註冊全域熱鍵。
 
 ## 已知限制
 

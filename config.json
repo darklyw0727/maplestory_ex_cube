@@ -1,5 +1,5 @@
 {
-  "// 使用說明": "target_potentials 是「多組允許的目標組合」的list，每組固定3個字串(允許空字串，代表除其他目標潛能外的任意潛能)，list中排越前面優先權越高；只要每次重新設定後畫面上的3個潛能滿足其中任一組合就算達成目標、程式自動結束。可只寫名稱(如\"魔法攻擊力\")代表不限數值，也可連數值一起寫(如\"魔法攻擊力 +12%\")代表數值也要完全符合才算目標達成。log_lv設為\"debug\"會印出每次點擊的詳細座標，其餘(含預設)只印重點流程訊息。max_cubes 為0代表不限制使用數量，每按一次「重新設定」算用掉1個方塊。regions 內為所有按鈕/讀取區域的座標，單位是 ref_width x ref_height 這個參考解析度下的像素；若遊戲視窗UI位置跟預設值對不上，可執行 python tools/locate.py 依提示逐項重新校正，不需要改程式碼。ocr_lang 是 PaddleOCR 的語言模型，預設 chinese_cht(繁體中文)。",
+  "// 使用說明": "target_potentials 是「多組允許的目標組合」的list，每組固定3個字串(允許空字串，代表除其他目標潛能外的任意潛能)，list中排越前面優先權越高；只要每次重新設定後畫面上的3個潛能滿足其中任一組合就算達成目標、程式自動結束。可只寫名稱(如\"魔法攻擊力\")代表不限數值，也可連數值一起寫(如\"魔法攻擊力 +12%\")代表數值也要完全符合才算目標達成。log_lv設為\"debug\"會印出每次點擊的詳細座標，其餘(含預設)只印重點流程訊息。max_cubes 為0代表不限制使用數量，每按一次「重新設定」算用掉1個方塊。start_hotkey/stop_hotkey 是全域開始/停止熱鍵(不用切換視窗也能觸發；start_hotkey 只有GUI用得到)，calibrate_confirm_hotkey/calibrate_skip_hotkey/calibrate_finish_hotkey 是GUI座標校正對話框用的記錄/跳過/結束熱鍵(校正時請用熱鍵、不要點按鈕，否則滑鼠會被移動)，設成空字串代表不註冊該熱鍵。regions 內為所有按鈕/讀取區域的座標，單位是 ref_width x ref_height 這個參考解析度下的像素；若遊戲視窗UI位置跟預設值對不上，可執行 python tools/locate.py 依提示逐項重新校正，不需要改程式碼。ocr_lang 是 PaddleOCR 的語言模型，預設 chinese_cht(繁體中文)。",
   "target_potentials": [
     [
       "",
@@ -80,6 +80,11 @@
   "click_delay_sec": 0.35,
   "post_action_wait_sec": 0.6,
   "dry_run": false,
+  "start_hotkey": "ctrl+f1",
+  "stop_hotkey": "ctrl+f2",
+  "calibrate_confirm_hotkey": "ctrl+f3",
+  "calibrate_skip_hotkey": "ctrl+f4",
+  "calibrate_finish_hotkey": "ctrl+f5",
   "regions": {
     "ref_width": 1366,
     "ref_height": 768,
@@ -146,10 +151,6 @@
     "restore_reroll_confirm_button_2": [
       653,
       456
-    ],
-    "restore_select_after_confirm_button": [
-      632,
-      487
     ]
   }
 }
