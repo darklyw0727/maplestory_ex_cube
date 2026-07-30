@@ -222,6 +222,31 @@ py -3.13 -m venv .venv
 首次開啟視窗會先在背景初始化 PaddleOCR 引擎(需要一點時間，尤其是第一次要下載模型)，
 初始化完成前「開始」與「座標校正」按鈕會維持停用狀態。
 
+## 打包成 exe
+
+用 [PyInstaller](https://pyinstaller.org/) 把 GUI(`gui.py`)打包成不需要安裝 Python
+就能執行的程式：
+
+```
+.venv\Scripts\python -m pip install pyinstaller
+.venv\Scripts\python -m PyInstaller AutoExCube.spec
+```
+
+打包結果在 `dist/AutoExCube/`，裡面的 `AutoExCube.exe` 加上整個 `_internal/`
+資料夾都要一起帶走(不能只複製 exe 單獨那個檔案)，`config.json` 要放在跟 exe 同一層
+目錄。整包大約 700MB+(主要是 `paddlepaddle` 本身很大)，第一次啟動若本機還沒有
+PaddleOCR 模型快取(`~/.paddlex/official_models/`)一樣需要網路下載。
+
+`AutoExCube.spec` 已經包含打包 `paddleocr`/`paddlex`/`paddle`/`keyboard` 這幾個
+套件需要的 `--collect-all` 設定，改完程式碼後重新打包只要重跑上面第二行指令即可，
+不需要重新產生 `.spec`。
+
+若防毒軟體對這個 exe 跳出誤判警告，這是 PyInstaller 打包的未簽章大型執行檔常見的
+現象(尤其是包含大量原生 DLL 的 ML 相關套件)，可以自行評估是否加入例外。
+
+CLI(`run.py`/`tools/locate.py`)目前沒有另外打包，仍需要用 Python 執行；如果需要
+CLI 版本的 exe，可以比照 `.spec` 的做法各自打包一份。
+
 ## 測試（不需要開遊戲）
 
 ```

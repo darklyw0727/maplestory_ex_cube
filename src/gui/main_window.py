@@ -32,7 +32,15 @@ class _OcrInitWorker(QThread):
             ocr.configure(self.ocr_lang)
             self.ready.emit()
         except Exception as e:  # noqa: BLE001
-            self.failed.emit(str(e))
+            # 有些例外(例如 paddlex 的 DependencyError)是被包成通用訊息再用
+            # `raise ... from e` 往外丟，真正原因在 __cause__ 裡，一併帶出來
+            # 才看得出實際少了什麼。
+            detail = str(e)
+            cause = e.__cause__
+            while cause is not None:
+                detail += f"\n  原因: {cause!r}"
+                cause = cause.__cause__
+            self.failed.emit(detail)
 
 
 class _HotkeyBridge(QObject):
