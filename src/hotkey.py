@@ -2,7 +2,7 @@
 同一組函式註冊/取消「停止」等熱鍵，不管遊戲視窗有沒有 focus 都能觸發。"""
 import logging
 
-log = logging.getLogger("auto_shine_cube")
+log = logging.getLogger("auto_ex_cube")
 
 
 def register(hotkey: str, callback):

@@ -14,7 +14,7 @@ from .calibration_dialog import CalibrationDialog
 from .combo_editor import TargetPotentialsEditor
 from .worker import AutomationWorker
 
-log = logging.getLogger("auto_shine_cube")
+log = logging.getLogger("auto_ex_cube")
 
 CONFIG_PATH = "config.json"
 

@@ -7,7 +7,7 @@ from . import ocr, regions
 from .config import Config
 from .window import GameWindow
 
-log = logging.getLogger("auto_shine_cube")
+log = logging.getLogger("auto_ex_cube")
 
 
 @dataclass

@@ -43,7 +43,7 @@ def main():
     cfg = load_config(args.config)
 
     log_path = setup_logging(cfg)
-    log = logging.getLogger("auto_shine_cube")
+    log = logging.getLogger("auto_ex_cube")
 
     ocr.configure(cfg.ocr_lang)
 

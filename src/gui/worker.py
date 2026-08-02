@@ -32,7 +32,7 @@ class AutomationWorker(QThread):
         self.stop_event.set()
 
     def run(self):
-        logger = logging.getLogger("auto_shine_cube")
+        logger = logging.getLogger("auto_ex_cube")
         handler = _QtLogHandler(self.log_line.emit)
         handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
         logger.addHandler(handler)
