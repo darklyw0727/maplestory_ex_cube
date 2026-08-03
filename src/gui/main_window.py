@@ -5,7 +5,7 @@ from pathlib import Path
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QPushButton,
-    QTextEdit, QComboBox, QLabel, QMessageBox,
+    QTextEdit, QComboBox, QLabel, QMessageBox, QSpinBox,
 )
 
 from src import calibration, ocr
@@ -104,6 +104,40 @@ class MainWindow(QMainWindow):
         self.log_view.setReadOnly(True)
         root.addWidget(self.log_view, stretch=3)
 
+        # ---------- 遊戲解析度設定 ----------
+        resolution_box = QGroupBox("遊戲解析度設定")
+        resolution_outer = QVBoxLayout(resolution_box)
+        resolution_row = QHBoxLayout()
+        resolution_row.addWidget(QLabel("寬度："))
+        self.ref_width_spin = QSpinBox()
+        self.ref_width_spin.setRange(100, 10000)
+        self.ref_width_spin.setValue(self.regions_dict["ref_width"])
+        resolution_row.addWidget(self.ref_width_spin)
+        resolution_row.addWidget(QLabel("高度："))
+        self.ref_height_spin = QSpinBox()
+        self.ref_height_spin.setRange(100, 10000)
+        self.ref_height_spin.setValue(self.regions_dict["ref_height"])
+        resolution_row.addWidget(self.ref_height_spin)
+        self.detect_resolution_btn = QPushButton("偵測目前遊戲視窗大小")
+        self.detect_resolution_btn.clicked.connect(self._on_detect_resolution)
+        resolution_row.addWidget(self.detect_resolution_btn)
+        self.save_resolution_btn = QPushButton("儲存解析度設定")
+        self.save_resolution_btn.clicked.connect(self._save_resolution)
+        resolution_row.addWidget(self.save_resolution_btn)
+        resolution_outer.addLayout(resolution_row)
+
+        resolution_hint = QLabel(
+            "這是 config.json 的 ref_width/ref_height，所有按鈕座標都是以這個解析度為基準"
+            "記錄的。變更解析度後，既有座標會跟著等比例縮放，但最準確的做法是：先偵測/"
+            "設定成跟遊戲視窗實際大小一致，儲存後再重新執行下方「全部校正」，否則點擊位置"
+            "可能會不準。"
+        )
+        resolution_hint.setWordWrap(True)
+        resolution_hint.setStyleSheet("color: #666666;")
+        resolution_outer.addWidget(resolution_hint)
+
+        root.addWidget(resolution_box)
+
         # ---------- 座標校正功能 ----------
         calib_box = QGroupBox("座標校正")
         calib_layout = QVBoxLayout(calib_box)
@@ -151,6 +185,8 @@ class MainWindow(QMainWindow):
         self.start_btn.setEnabled(not busy)
         self.calibrate_all_btn.setEnabled(not busy)
         self.calibrate_one_btn.setEnabled(not busy)
+        self.detect_resolution_btn.setEnabled(not busy)
+        self.save_resolution_btn.setEnabled(not busy)
 
     def _on_ocr_ready(self):
         self.status_label.setText("就緒")
@@ -250,6 +286,30 @@ class MainWindow(QMainWindow):
             "finish": self.config_data.get("calibrate_finish_hotkey", "ctrl+f5"),
         }
 
+    # ---------- 遊戲解析度設定 ----------
+
+    def _on_detect_resolution(self):
+        window_title = self.config_data.get("window_title", "貓貓TMS")
+        hwnd = calibration.find_window(window_title)
+        if not hwnd:
+            QMessageBox.warning(self, "找不到視窗", f"找不到遊戲視窗「{window_title}」，請先開啟遊戲。")
+            return
+        left, top, right, bottom = calibration.client_rect_on_screen(hwnd)
+        actual_w, actual_h = right - left, bottom - top
+        self.ref_width_spin.setValue(actual_w)
+        self.ref_height_spin.setValue(actual_h)
+        self.status_label.setText(f"已偵測到目前視窗大小 {actual_w}x{actual_h}，請點擊「儲存解析度設定」套用")
+
+    def _save_resolution(self):
+        self.regions_dict["ref_width"] = self.ref_width_spin.value()
+        self.regions_dict["ref_height"] = self.ref_height_spin.value()
+        self._write_config()
+        self._append_log(
+            f"已儲存遊戲解析度設定 -> ref_width={self.regions_dict['ref_width']}, "
+            f"ref_height={self.regions_dict['ref_height']}，建議重新執行「全部校正」"
+        )
+        self.status_label.setText("已儲存遊戲解析度設定")
+
     # ---------- 開始/停止熱鍵(全程有效，不受目前是否執行中影響) ----------
 
     def _register_run_hotkeys(self):
@@ -308,6 +368,8 @@ class MainWindow(QMainWindow):
         self.stop_btn.setEnabled(True)
         self.calibrate_all_btn.setEnabled(False)
         self.calibrate_one_btn.setEnabled(False)
+        self.detect_resolution_btn.setEnabled(False)
+        self.save_resolution_btn.setEnabled(False)
         self.status_label.setText("執行中…")
 
         self.automation_worker = AutomationWorker(str(self.config_path))
@@ -327,6 +389,8 @@ class MainWindow(QMainWindow):
         self.stop_btn.setEnabled(False)
         self.calibrate_all_btn.setEnabled(True)
         self.calibrate_one_btn.setEnabled(True)
+        self.detect_resolution_btn.setEnabled(True)
+        self.save_resolution_btn.setEnabled(True)
 
     def _on_run_finished(self, result: str):
         messages = {
