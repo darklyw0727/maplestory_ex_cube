@@ -88,6 +88,7 @@ class Controller:
         """
         label = self._read_currency_label()
         candidates = [("simple", t) for t in self.cfg.regions.currency_expected_texts]
+        candidates = [("delay", t) for t in self.cfg.regions.delay_currency_expected_texts]
         candidates += [("restore", t) for t in self.cfg.regions.restore_currency_expected_texts]
         flow, best_text, best_score = max(
             ((flow, t, ocr.match_score(label, t)) for flow, t in candidates),
@@ -149,7 +150,8 @@ class Controller:
             self.cfg.regions.result_text_x_offset,
         )
 
-    def _run_simple_flow(self):
+    def _run_simple_flow(self, flow):
+        log.debug(f"Run {flow} simple flow")
         while True:
             if self.stop_event is not None and self.stop_event.is_set():
                 log.info("收到停止要求，結束")
@@ -161,6 +163,10 @@ class Controller:
 
             self.click_reset()
             self.used_cubes += 1
+
+            if flow == "delay":
+                log.debug(f"延遲{self.cfg.delay_currency_expected_delay_time}秒")
+                time.sleep(self.cfg.delay_currency_expected_delay_time)
 
             rows = self.read_potentials()
             log.info("第%d次重設後的潛能: %s", self.used_cubes, [r.display for r in rows])
@@ -235,4 +241,4 @@ class Controller:
             return self._run_restore_flow()
 
         log.info("偵測到「珍貴附加方塊」「絕對附加方塊」或「萌獸方塊」，走一般流程")
-        return self._run_simple_flow()
+        return self._run_simple_flow(flow)

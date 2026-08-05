@@ -267,7 +267,8 @@ GUI 使用者可以直接用「遊戲解析度設定」區塊的「偵測目前�
 | 欄位 | 說明 |
 | --- | --- |
 | `currency_label_box` | 讀取「使用貨幣」欄位文字的區域，**兩種流程共用**同一個畫面位置 |
-| `currency_expected_texts` / `restore_currency_expected_texts` | 可接受的方塊名稱：前者是珍貴附加方塊/絕對附加方塊/萌獸方塊(走一般流程)，後者是恢復附加方塊(走恢復流程)；程式讀取使用貨幣文字後兩邊比對，自動決定走哪個流程 |
+| `currency_expected_texts` / `delay_currency_expected_texts` / `restore_currency_expected_texts` | 可接受的方塊名稱：前者是珍貴附加方塊/絕對附加方塊(走一般流程)，中間是萌獸方塊(一般流程，但有結束延遲)，後者是恢復附加方塊(走恢復流程)；程式讀取使用貨幣文字後兩邊比對，自動決定走哪個流程 |
+| `delay_currency_expected_delay_time` | 使用萌獸方塊重設潛能後讀取潛能的延遲時間 |
 | `reset_button` / `reset_confirm_button` | 「重新設定」按鈕與其確認彈窗的「確認」按鈕，**兩種流程共用**(按下後立即套用新的潛在能力，或進入恢復流程的BEFORE/AFTER比較畫面) |
 | `result_list_box` / `result_row_y_bounds` / `result_text_x_offset` | (一般流程)重新設定後直接顯示的3個潛能清單方框、其中4條分隔線(切出3列)、每列文字起始位置相對整列左緣的x偏移(跳過tier圖示) |
 | `restore_result_list_box` / `restore_result_row_y_bounds` / `restore_result_text_x_offset` | (恢復流程)BEFORE/AFTER比較畫面中，右邊AFTER潛能組的清單方框/分隔線/文字x偏移，意義同上 |

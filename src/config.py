@@ -17,6 +17,7 @@ class Config:
     post_action_wait_sec: float
     dry_run: bool
     stop_hotkey: str
+    delay_currency_expected_delay_time: float
     regions: Regions
 
     def __post_init__(self):
@@ -39,6 +40,7 @@ def load_config(path: str = "config.json") -> Config:
         log_lv=str(data["log_lv"]),
         max_cubes=int(data.get("max_cubes", 0)),
         window_title=data.get("window_title", "貓貓TMS"),
+        delay_currency_expected_delay_time=float(data.get("delay_currency_expected_delay_time", 2)),
         ocr_lang=data.get("ocr_lang", "chinese_cht"),
         ocr_match_threshold=float(data.get("ocr_match_threshold", 0.55)),
         click_delay_sec=float(data.get("click_delay_sec", 0.35)),
